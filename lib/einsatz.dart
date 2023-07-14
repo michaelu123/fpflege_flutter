@@ -1,37 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fpflege/db_provider.dart';
 import 'package:fpflege/utils.dart';
 
-class Einsatz extends StatefulWidget {
+class Einsatz extends ConsumerStatefulWidget {
   const Einsatz(this.no, this.store, {super.key});
   final int no;
   final Function(int, String, String) store;
 
   @override
-  State<Einsatz> createState() => _EinsatzState();
+  ConsumerState<Einsatz> createState() => _EinsatzState();
 }
 
-class _EinsatzState extends State<Einsatz> {
+class _EinsatzState extends ConsumerState<Einsatz> {
   late Map<String, TextEditingController>
       controllerMap; // Map<String, TextEditingController>>;
   late Map<String, FocusNode> focusNodeMap;
-  var _kh = false;
 
   @override
   void initState() {
     super.initState();
 
     controllerMap = {
-      "name": TextEditingController(),
+      "einsatz": TextEditingController(),
       "begin": TextEditingController(),
       "end": TextEditingController(),
-      "mvv": TextEditingController(),
+      // "mvv": TextEditingController(),
       "fahrzeit": TextEditingController(),
     };
     focusNodeMap = {
-      "name": FocusNode(),
+      "einsatz": FocusNode(),
       "begin": FocusNode(),
       "end": FocusNode(),
-      "mvv": FocusNode(),
+      // "mvv": FocusNode(),
       "fahrzeit": FocusNode(),
     };
     for (final name in focusNodeMap.keys) {
@@ -42,18 +43,29 @@ class _EinsatzState extends State<Einsatz> {
     }
   }
 
-  void focusEvt(fe) {
-    final hasFocus = focusNodeMap[fe]!.hasFocus;
-    final controller = controllerMap[fe]!;
+  void focusEvt(name) async {
+    final hasFocus = focusNodeMap[name]!.hasFocus;
+    final controller = controllerMap[name]!;
 
     String value = controller.text;
-    print("xxxxxxx ${widget.no} $fe $hasFocus $value");
     if (!hasFocus) {
-      final newValue = standardize(fe, value);
+      String newValue;
+      try {
+        newValue = standardize(name, value);
+        if (name == "einsatz" && widget.no == 1) {
+          // TODO fillinStdBegEnd(wtag2Stunden)
+          await widget.store(widget.no, "begin", "08:00");
+          await widget.store(widget.no, "end", "16:30");
+        }
+      } catch (e) {
+        newValue = "";
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
       if (newValue != value) {
         controller.text = value = newValue;
-        widget.store(widget.no, fe, value);
       }
+      widget.store(widget.no, name, value);
     }
   }
 
@@ -70,6 +82,18 @@ class _EinsatzState extends State<Einsatz> {
 
   @override
   Widget build(BuildContext context) {
+    final day = ref.watch(dbProvider);
+    final fam = widget.no == 1
+        ? day.fam1
+        : widget.no == 2
+            ? day.fam2
+            : day.fam3;
+    controllerMap["einsatz"]!.text = fam.einsatz;
+    controllerMap["begin"]!.text = fam.begin;
+    controllerMap["end"]!.text = fam.end;
+    controllerMap["fahrzeit"]!.text = fam.fahrzeit;
+    bool kh = fam.kh;
+
     return Column(
       children: [
         Row(
@@ -77,8 +101,8 @@ class _EinsatzState extends State<Einsatz> {
           children: [
             Expanded(
               child: TextField(
-                controller: controllerMap["name"]!,
-                focusNode: focusNodeMap["name"]!,
+                controller: controllerMap["einsatz"]!,
+                focusNode: focusNodeMap["einsatz"]!,
                 decoration: InputDecoration(
                     labelText: '${widget.no}. Name/Ur/Kr/Fe/Üs/Fo/Su/Di/So',
                     hintText: "Pfl-Nr oder Name,Urlaub,Krank,..."),
@@ -86,9 +110,10 @@ class _EinsatzState extends State<Einsatz> {
             ),
             const Text("KH"),
             Checkbox(
-              value: _kh,
+              value: kh,
               onChanged: (value) {
-                _kh = value ?? false;
+                kh = value ?? false;
+                widget.store(widget.no, "kh", kh.toString());
                 setState(() {});
               },
             ),
@@ -121,6 +146,7 @@ class _EinsatzState extends State<Einsatz> {
             SizedBox(
               width: 60,
               child: TextField(
+                enabled: widget.no != 3,
                 controller: controllerMap["fahrzeit"]!,
                 focusNode: focusNodeMap["fahrzeit"]!,
                 keyboardType: TextInputType.number,
@@ -128,15 +154,15 @@ class _EinsatzState extends State<Einsatz> {
                     labelText: "Fahrtzeit", hintText: "0,5 oder leer"),
               ),
             ),
-            SizedBox(
-              width: 60,
-              child: TextField(
-                controller: controllerMap["mvv"]!,
-                focusNode: focusNodeMap["mvv"]!,
-                decoration: const InputDecoration(
-                    labelText: "MVV-Euro", hintText: "Kosten Fahrkarte"),
-              ),
-            ),
+            // SizedBox(
+            //   width: 60,
+            //   child: TextField(
+            //     controller: controllerMap["mvv"]!,
+            //     focusNode: focusNodeMap["mvv"]!,
+            //     decoration: const InputDecoration(
+            //         labelText: "MVV-Euro", hintText: "Kosten Fahrkarte"),
+            //   ),
+            // ),
           ],
         ),
       ],

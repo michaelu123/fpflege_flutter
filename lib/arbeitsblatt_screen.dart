@@ -1,46 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fpflege/db_provider.dart';
 import 'package:fpflege/einsatz.dart';
 import 'package:fpflege/utils.dart';
 
-class Arbeitsblatt extends StatefulWidget {
+class Arbeitsblatt extends ConsumerStatefulWidget {
   const Arbeitsblatt({super.key});
 
   @override
-  State<Arbeitsblatt> createState() => _ArbeitsblattState();
+  ConsumerState<Arbeitsblatt> createState() => _ArbeitsblattState();
 }
 
-class _ArbeitsblattState extends State<Arbeitsblatt> {
-  var date = DateTime.now();
-  var dateShown = "";
-  var dateIdx = "";
+class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
+  var day = DateTime.now();
+  var dayShown = "";
+  var dayIdx = "";
+  late Future<void> dayFuture;
+  late Future<void> Function(int, String, String) store;
+
+  @override
+  void initState() {
+    super.initState();
+    dayIdx = date2Idx(day); // YYYY.MM.DD
+    dayFuture = ref.read(dbProvider.notifier).loadDay(dayIdx);
+    store = ref.read(dbProvider.notifier).store;
+  }
 
   void useDate(int days) {
     final now = DateTime.now();
     final lb = now.add(const Duration(days: -60));
     final ub = now.add(const Duration(days: 60));
     if (days == 0) {
-      date = now;
+      day = now;
     } else {
-      date = date.add(Duration(days: days));
-      if (date.isBefore(lb)) date = lb;
-      if (date.isAfter(ub)) date = ub;
+      day = day.add(Duration(days: days));
+      if (day.isBefore(lb)) day = lb;
+      if (day.isAfter(ub)) day = ub;
     }
-    dateShown = date2Txt(date); // Mo, DD.MM.YYYY
-    dateIdx = date2Idx(date); // YYYY.MM.DD
-    print("xxxx dateidx $dateIdx");
+    dayShown = date2Txt(day); // Mo, DD.MM.YYYY
+    dayIdx = date2Idx(day); // YYYY.MM.DD
+    dayFuture = ref.read(dbProvider.notifier).loadDay(dayIdx);
     setState(() {});
   }
 
-  void store(int no, String name, String value) {
-    print("xxxx store $dateIdx $no $name $value");
-  }
+  void clearAll() {}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          date2Txt(date),
+          date2Txt(day),
           style: const TextStyle(
             fontSize: 18,
           ),
@@ -56,7 +66,7 @@ class _ArbeitsblattState extends State<Arbeitsblatt> {
           ),
           IconButton(
             icon: const Icon(Icons.delete),
-            onPressed: () {},
+            onPressed: clearAll,
           ),
           const SizedBox(width: 30),
         ],

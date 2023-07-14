@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fpflege/arbeitsblatt_screen.dart';
 
@@ -14,7 +14,11 @@ final theme = ThemeData.light().copyWith(
 );
 
 void main() {
-  initializeDateFormatting('de_DE', null).then((_) => runApp(const MyApp()));
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
