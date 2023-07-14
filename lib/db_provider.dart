@@ -11,11 +11,19 @@ Future<Database> _getDatabase() async {
   final dbPath = await sql.getDatabasesPath();
   final db = await sql.openDatabase(
     path.join(dbPath, "arbeitsblatt.db"),
-    onCreate: (db, version) {
-      return db.execute("""
-          CREATE TABLE arbeitsblatt(tag TEXT,fnr INTEGER,
-          einsatzstelle TEXT,beginn TEXT,ende TEXT,
-          fahrtzeit TEXT,kh INTEGER)
+    onCreate: (db, version) async {
+      await db.execute("""
+          CREATE TABLE arbeitsblatt(
+            tag TEXT,fnr INTEGER,
+            einsatzstelle TEXT,beginn TEXT,ende TEXT,
+            fahrtzeit TEXT,kh INTEGER)
+      """);
+      await db.execute("""
+          CREATE TABLE eigenschaften(
+            vorname TEXT,
+            nachname TEXT,
+            wochenstunden TEXT,
+            emailadresse TEXT)
       """);
     },
     version: 1,
@@ -35,7 +43,7 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
   DBNotifier() : super(FpflegeDay.empty(""));
   Database? db;
 
-  Future<void> loadDay(String dayIdx) async {
+  Future<FpflegeDay> loadDay(String dayIdx) async {
     db ??= await _getDatabase();
     final data = await db!.query(
       "arbeitsblatt",
@@ -59,14 +67,16 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
         day = day.copyWith(no, "fahrzeit", fahrzeit as String);
       }
       final kh = row["kh"];
-      print("kh $kh");
       if (kh != null) day = day.copyWith(no, "kh", kh as String);
     }
-    state = day;
+    return day;
+  }
+
+  Future<void> load(String dayIdx) async {
+    state = await loadDay(dayIdx);
   }
 
   Future<void> store(int no, String name, String value) async {
-    print("xxxx store ${state.dayIdx} $no $name $value");
     state = state.copyWith(no, name, value);
     db ??= await _getDatabase();
     int chgCnt = await db!.update(
@@ -75,7 +85,6 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
       where: "tag=? and fnr=?",
       whereArgs: [state.dayIdx, no],
     );
-    print("xxxx update $no $name $value : $chgCnt");
     if (chgCnt == 0) {
       await db!.insert("arbeitsblatt", {
         "tag": state.dayIdx,
@@ -83,6 +92,33 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
         fieldNameMap[name]!: value,
       });
     }
+  }
+
+  Future<List<Object>> readEigenschaften() async {
+    db ??= await _getDatabase();
+    final data = await db!.query(
+      "eigenschaften",
+    );
+    if (data.isEmpty) {
+      return ["", "", "", 30];
+    }
+    final vorname = data[0]["vorname"] as String;
+    final nachname = data[0]["nachname"] as String;
+    final email = data[0]["emailadresse"] as String;
+    final stunden = data[0]["wochenstunden"] as int;
+
+    return [vorname, nachname, email, stunden];
+  }
+
+  Future<void> storeEigenschaften(
+      String vorname, String nachname, String email, int stunden) async {
+    db ??= await _getDatabase();
+    await db!.insert("eigenschaften", {
+      "vorname": vorname,
+      "nachname": nachname,
+      "emailadresse": email,
+      "wochenstunden": stunden,
+    });
   }
 }
 

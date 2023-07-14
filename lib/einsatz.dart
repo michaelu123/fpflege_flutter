@@ -52,11 +52,6 @@ class _EinsatzState extends ConsumerState<Einsatz> {
       String newValue;
       try {
         newValue = standardize(name, value);
-        if (name == "einsatz" && widget.no == 1) {
-          // TODO fillinStdBegEnd(wtag2Stunden)
-          await widget.store(widget.no, "begin", "08:00");
-          await widget.store(widget.no, "end", "16:30");
-        }
       } catch (e) {
         newValue = "";
         ScaffoldMessenger.of(context)

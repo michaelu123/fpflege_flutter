@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpflege/db_provider.dart';
+import 'package:fpflege/eigenschaften_screen.dart';
 import 'package:fpflege/einsatz.dart';
 import 'package:fpflege/utils.dart';
 
@@ -22,7 +23,7 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
   void initState() {
     super.initState();
     dayIdx = date2Idx(day); // YYYY.MM.DD
-    dayFuture = ref.read(dbProvider.notifier).loadDay(dayIdx);
+    dayFuture = ref.read(dbProvider.notifier).load(dayIdx);
     store = ref.read(dbProvider.notifier).store;
   }
 
@@ -39,7 +40,7 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
     }
     dayShown = date2Txt(day); // Mo, DD.MM.YYYY
     dayIdx = date2Idx(day); // YYYY.MM.DD
-    dayFuture = ref.read(dbProvider.notifier).loadDay(dayIdx);
+    dayFuture = ref.read(dbProvider.notifier).load(dayIdx);
     setState(() {});
   }
 
@@ -57,7 +58,13 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.account_box),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (ctx) {
+                return const Eigenschaften();
+              }),
+            );
+          },
         ),
         actions: [
           IconButton(
