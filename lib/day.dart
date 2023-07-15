@@ -1,18 +1,18 @@
 class FpflegeEinsatz {
-  final String einsatz;
+  final String einsatzstelle;
   final String begin;
   final String end;
   final String fahrzeit;
   final bool kh;
   FpflegeEinsatz({
-    required this.einsatz,
+    required this.einsatzstelle,
     required this.begin,
     required this.end,
     required this.fahrzeit,
     required this.kh,
   });
   FpflegeEinsatz.empty()
-      : einsatz = "",
+      : einsatzstelle = "",
         begin = "",
         end = "",
         fahrzeit = "",
@@ -34,11 +34,11 @@ class FpflegeDay {
   // can this be improved? Dart has no object destructuring, as it seems.
   // using json as intermediate?
   FpflegeDay copyWith(int no, String name, String value) {
-    var einsatz = no == 1
-        ? fam1.einsatz
+    var einsatzstelle = no == 1
+        ? fam1.einsatzstelle
         : no == 2
-            ? fam2.einsatz
-            : fam3.einsatz;
+            ? fam2.einsatzstelle
+            : fam3.einsatzstelle;
     var begin = no == 1
         ? fam1.begin
         : no == 2
@@ -61,8 +61,8 @@ class FpflegeDay {
             : fam3.kh;
 
     switch (name) {
-      case "einsatz":
-        einsatz = value;
+      case "einsatzstelle":
+        einsatzstelle = value;
         break;
       case "begin":
         begin = value;
@@ -74,12 +74,12 @@ class FpflegeDay {
         fahrzeit = value;
         break;
       case "kh":
-        kh = value == "true";
+        kh = value == "true" || value == "1";
         break;
     }
 
     final fam = FpflegeEinsatz(
-      einsatz: einsatz,
+      einsatzstelle: einsatzstelle,
       begin: begin,
       end: end,
       fahrzeit: fahrzeit,

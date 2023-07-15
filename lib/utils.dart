@@ -14,7 +14,7 @@ final values = [
 
 String standardize(String name, String value) {
   value = value.trim();
-  if (name == "einsatz") {
+  if (name == "einsatzstelle") {
     final v = value.toLowerCase();
     if (value.length >= 2) {
       for (final v2 in values) {
@@ -112,4 +112,13 @@ String date2Txt(DateTime date) {
 
 String date2Idx(DateTime date) {
   return DateFormat("yyyy.MM.dd").format(date);
+}
+
+bool weekEnd(DateTime date) {
+  final wd = date.weekday;
+  return wd == DateTime.saturday || wd == DateTime.sunday;
+}
+
+int val2Int(String value) {
+  return value == "true" || value == "1" ? 1 : 0;
 }

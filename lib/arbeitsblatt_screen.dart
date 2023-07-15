@@ -13,17 +13,15 @@ class Arbeitsblatt extends ConsumerStatefulWidget {
 }
 
 class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
-  var day = DateTime.now();
+  var date = DateTime.now();
   var dayShown = "";
-  var dayIdx = "";
   late Future<void> dayFuture;
   late Future<void> Function(int, String, String) store;
 
   @override
   void initState() {
     super.initState();
-    dayIdx = date2Idx(day); // YYYY.MM.DD
-    dayFuture = ref.read(dbProvider.notifier).load(dayIdx);
+    dayFuture = ref.read(dbProvider.notifier).load(date);
     store = ref.read(dbProvider.notifier).store;
   }
 
@@ -32,26 +30,27 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
     final lb = now.add(const Duration(days: -60));
     final ub = now.add(const Duration(days: 60));
     if (days == 0) {
-      day = now;
+      date = now;
     } else {
-      day = day.add(Duration(days: days));
-      if (day.isBefore(lb)) day = lb;
-      if (day.isAfter(ub)) day = ub;
+      date = date.add(Duration(days: days));
+      if (date.isBefore(lb)) date = lb;
+      if (date.isAfter(ub)) date = ub;
     }
-    dayShown = date2Txt(day); // Mo, DD.MM.YYYY
-    dayIdx = date2Idx(day); // YYYY.MM.DD
-    dayFuture = ref.read(dbProvider.notifier).load(dayIdx);
+    dayShown = date2Txt(date); // Mo, DD.MM.YYYY
+    dayFuture = ref.read(dbProvider.notifier).load(date);
     setState(() {});
   }
 
-  void clearAll() {}
+  void clearAll() async {
+    await ref.read(dbProvider.notifier).clearAll();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          date2Txt(day),
+          date2Txt(date),
           style: const TextStyle(
             fontSize: 18,
           ),

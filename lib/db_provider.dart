@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpflege/day.dart';
+import 'package:fpflege/utils.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sql;
 // import 'package:sqflite/sqlite_api.dart';
@@ -32,7 +33,7 @@ Future<Database> _getDatabase() async {
 }
 
 final fieldNameMap = {
-  "einsatz": "einsatzstelle",
+  "einsatzstelle": "einsatzstelle",
   "begin": "beginn",
   "end": "ende",
   "fahrzeit": "fahrtzeit",
@@ -43,7 +44,9 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
   DBNotifier() : super(FpflegeDay.empty(""));
   Database? db;
 
-  Future<FpflegeDay> loadDay(String dayIdx) async {
+  Future<FpflegeDay> loadDay(DateTime date) async {
+    String dayIdx = date2Idx(date); // YYYY.MM.DD
+
     db ??= await _getDatabase();
     final data = await db!.query(
       "arbeitsblatt",
@@ -51,29 +54,51 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
       whereArgs: [dayIdx],
     );
 
-    var day = FpflegeDay.empty(dayIdx);
+    var dayRes = FpflegeDay.empty(dayIdx);
     for (final row in data) {
       final noVal = row["fnr"];
       if (noVal == null) continue;
       int no = noVal as int;
-      final einsatz = row["einsatzstelle"];
-      if (einsatz != null) day = day.copyWith(no, "einsatz", einsatz as String);
+      final einsatzstelle = row["einsatzstelle"];
+      if (einsatzstelle != null) {
+        dayRes = dayRes.copyWith(no, "einsatzstelle", einsatzstelle as String);
+      }
       final begin = row["beginn"];
-      if (begin != null) day = day.copyWith(no, "begin", begin as String);
+      if (begin != null) {
+        dayRes = dayRes.copyWith(no, "begin", begin as String);
+      }
       final end = row["end"];
-      if (end != null) day = day.copyWith(no, "end", end as String);
+      if (end != null) {
+        dayRes = dayRes.copyWith(no, "end", end as String);
+      }
       final fahrzeit = row["fahrtzeit"];
       if (fahrzeit != null) {
-        day = day.copyWith(no, "fahrzeit", fahrzeit as String);
+        dayRes = dayRes.copyWith(no, "fahrzeit", fahrzeit as String);
       }
       final kh = row["kh"];
-      if (kh != null) day = day.copyWith(no, "kh", kh as String);
+      if (kh != null) {
+        dayRes = dayRes.copyWith(no, "kh", kh.toString());
+      }
     }
-    return day;
+    return dayRes;
   }
 
-  Future<void> load(String dayIdx) async {
-    state = await loadDay(dayIdx);
+  Future<void> load(DateTime date) async {
+    var day = await loadDay(date);
+
+    if (day.fam1.einsatzstelle == "" && !weekEnd(date)) {
+      for (int i = 1; i < 5; i++) {
+        final prevDate = date.subtract(Duration(days: i));
+        final prevDay = await loadDay(prevDate);
+        if (prevDay.fam1.einsatzstelle != "") {
+          String dayIdx = date2Idx(date);
+          day = FpflegeDay(dayIdx, prevDay.fam1, prevDay.fam2, prevDay.fam3);
+          await storeDay(day);
+          break;
+        }
+      }
+    }
+    state = day;
   }
 
   Future<void> store(int no, String name, String value) async {
@@ -81,17 +106,48 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
     db ??= await _getDatabase();
     int chgCnt = await db!.update(
       "arbeitsblatt",
-      {fieldNameMap[name]!: value},
+      {fieldNameMap[name]!: name == "kh" ? val2Int(value) : value},
       where: "tag=? and fnr=?",
       whereArgs: [state.dayIdx, no],
     );
-    if (chgCnt == 0) {
+    if (chgCnt == 0 && value != "") {
       await db!.insert("arbeitsblatt", {
         "tag": state.dayIdx,
         "fnr": no,
-        fieldNameMap[name]!: value,
+        fieldNameMap[name]!: name == "kh" ? val2Int(value) : value,
       });
     }
+  }
+
+  Future<void> storeDay(FpflegeDay day) async {
+    await storeEinsatz(day.dayIdx, 1, day.fam1);
+    await storeEinsatz(day.dayIdx, 2, day.fam2);
+    await storeEinsatz(day.dayIdx, 3, day.fam3);
+  }
+
+  Future<void> storeEinsatz(
+      String dayIdx, int no, FpflegeEinsatz einsatz) async {
+    if (einsatz.einsatzstelle == "") return;
+    db ??= await _getDatabase();
+    await db!.insert("arbeitsblatt", {
+      "tag": dayIdx,
+      "fnr": no,
+      "einsatzstelle": einsatz.einsatzstelle,
+      "beginn": einsatz.begin,
+      "ende": einsatz.end,
+      "fahrtzeit": einsatz.fahrzeit,
+      "kh": einsatz.kh ? 1 : 0,
+    });
+  }
+
+  Future<void> clearAll() async {
+    db ??= await _getDatabase();
+    await db!.delete(
+      "arbeitsblatt",
+      where: "tag = ?",
+      whereArgs: [state.dayIdx],
+    );
+    state = FpflegeDay.empty(state.dayIdx);
   }
 
   Future<List<Object>> readEigenschaften() async {
