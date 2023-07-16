@@ -5,10 +5,13 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sql;
 // import 'package:sqflite/sqlite_api.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:io';
 
 Future<Database> _getDatabase() async {
-  sqfliteFfiInit();
-  databaseFactory = databaseFactoryFfi;
+  if (Platform.isWindows) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   final dbPath = await sql.getDatabasesPath();
   final db = await sql.openDatabase(
     path.join(dbPath, "arbeitsblatt.db"),
@@ -156,19 +159,20 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
       "eigenschaften",
     );
     if (data.isEmpty) {
-      return ["", "", "", 30];
+      return ["", "", "", ""];
     }
     final vorname = data[0]["vorname"] as String;
     final nachname = data[0]["nachname"] as String;
     final email = data[0]["emailadresse"] as String;
-    final stunden = data[0]["wochenstunden"] as int;
+    final stunden = data[0]["wochenstunden"] as String;
 
     return [vorname, nachname, email, stunden];
   }
 
   Future<void> storeEigenschaften(
-      String vorname, String nachname, String email, int stunden) async {
+      String vorname, String nachname, String email, String stunden) async {
     db ??= await _getDatabase();
+    await db!.delete("eigenschaften");
     await db!.insert("eigenschaften", {
       "vorname": vorname,
       "nachname": nachname,

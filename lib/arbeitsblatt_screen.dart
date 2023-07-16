@@ -14,14 +14,18 @@ class Arbeitsblatt extends ConsumerStatefulWidget {
 
 class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
   var date = DateTime.now();
-  var dayShown = "";
-  late Future<void> dayFuture;
   late Future<void> Function(int, String, String) store;
+  late Future<void> dayFuture;
+  late Future<List<Object>> eigFuture;
+  late Future initFuture;
+  List<Object>? eigenschaften;
 
   @override
   void initState() {
     super.initState();
     dayFuture = ref.read(dbProvider.notifier).load(date);
+    eigFuture = ref.read(dbProvider.notifier).readEigenschaften();
+    initFuture = Future.wait([dayFuture, eigFuture]);
     store = ref.read(dbProvider.notifier).store;
   }
 
@@ -36,8 +40,7 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
       if (date.isBefore(lb)) date = lb;
       if (date.isAfter(ub)) date = ub;
     }
-    dayShown = date2Txt(date); // Mo, DD.MM.YYYY
-    dayFuture = ref.read(dbProvider.notifier).load(date);
+    ref.read(dbProvider.notifier).load(date);
     setState(() {});
   }
 
@@ -57,18 +60,24 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.account_box),
-          onPressed: () {
-            Navigator.of(context).push(
+          onPressed: () async {
+            await Navigator.of(context).push(
               MaterialPageRoute(builder: (ctx) {
                 return const Eigenschaften();
               }),
             );
+            // after storing and returning from push, read eig. again
+            eigFuture = ref.read(dbProvider.notifier).readEigenschaften();
+            initFuture = Future.wait([dayFuture, eigFuture]);
+            setState(() {});
           },
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.email),
-            onPressed: () {},
+            onPressed: () {
+              print("xxxx send email $eigenschaften");
+            },
           ),
           IconButton(
             icon: const Icon(Icons.delete),
@@ -107,11 +116,31 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
                   ),
                 ],
               ),
-              Einsatz(1, store),
               const SizedBox(height: 20),
-              Einsatz(2, store),
-              const SizedBox(height: 20),
-              Einsatz(3, store),
+              FutureBuilder(
+                future: initFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
+                  eigenschaften = snapshot.data[1];
+                  if (eigenschaften?[0] == "") {
+                    return Container(
+                        padding: const EdgeInsets.symmetric(vertical: 100),
+                        child: const Text("Bitte erst Namen etc. eingeben"));
+                  } else {
+                    return Column(
+                      children: [
+                        Einsatz(1, store),
+                        const SizedBox(height: 20),
+                        Einsatz(2, store),
+                        const SizedBox(height: 20),
+                        Einsatz(3, store),
+                      ],
+                    );
+                  }
+                },
+              ),
             ],
           ),
         ),
