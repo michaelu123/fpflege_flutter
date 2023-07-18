@@ -58,6 +58,18 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
     );
 
     var dayRes = FpflegeDay.empty(dayIdx);
+
+    if (data.isEmpty) {
+      // for testing
+      String dy = date2Txt(date);
+      await db!.insert("arbeitsblatt", {
+        "tag": dayIdx,
+        "fnr": 3,
+        "einsatzstelle": dy,
+      });
+      dayRes = dayRes.copyWith(3, "einsatzstelle", dy);
+    }
+
     for (final row in data) {
       final noVal = row["fnr"];
       if (noVal == null) continue;
@@ -89,7 +101,10 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
   Future<void> load(DateTime date) async {
     var day = await loadDay(date);
 
-    if (day.fam1.einsatzstelle == "" && !weekEnd(date)) {
+    if (day.fam1.einsatzstelle == "" &&
+        day.fam2.einsatzstelle == "" &&
+        day.fam3.einsatzstelle == "" &&
+        !weekEnd(date)) {
       for (int i = 1; i < 5; i++) {
         final prevDate = date.subtract(Duration(days: i));
         final prevDay = await loadDay(prevDate);

@@ -19,6 +19,13 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
   late Future<List<Object>> eigFuture;
   late Future initFuture;
   List<Object>? eigenschaften;
+  late PageController pageController;
+  int currDay = 60;
+
+  // in PageView.onPageChanged we must know
+  //if we changed the page via the controller (explicitChange=true)
+  //or by swiping (explicitChange=false)
+  bool explicitChange = false;
 
   @override
   void initState() {
@@ -27,21 +34,27 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
     eigFuture = ref.read(dbProvider.notifier).readEigenschaften();
     initFuture = Future.wait([dayFuture, eigFuture]);
     store = ref.read(dbProvider.notifier).store;
+    // day 60 = today,
+    pageController = PageController(initialPage: 60);
   }
 
-  void useDate(int days) {
-    final now = DateTime.now();
-    final lb = now.add(const Duration(days: -60));
-    final ub = now.add(const Duration(days: 60));
-    if (days == 0) {
-      date = now;
-    } else {
-      date = date.add(Duration(days: days));
-      if (date.isBefore(lb)) date = lb;
-      if (date.isAfter(ub)) date = ub;
+  Future<void> useDate(int days) async {
+    explicitChange = true;
+    if (days == 0) currDay = 60;
+    currDay += days;
+    if (currDay < 0) {
+      currDay = 0;
+    } else if (currDay >= 2 * 60) {
+      currDay = 2 * 60 - 1;
     }
-    ref.read(dbProvider.notifier).load(date);
+    //print("xxxx useDate $days $currDay");
+    await pageController.animateToPage(currDay,
+        duration: const Duration(milliseconds: 500), curve: Curves.linear);
+    final now = DateTime.now();
+    date = now.add(Duration(days: currDay - 60));
+    await ref.read(dbProvider.notifier).load(date);
     setState(() {});
+    explicitChange = false;
   }
 
   void clearAll() async {
@@ -86,64 +99,80 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
           const SizedBox(width: 30),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(30),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: PageView.builder(
+        onPageChanged: (value) {
+          // print("xxxx onpc $value $currDay $explicitChange");
+          if (!explicitChange) {
+            // page reached by swiping, not by clicking <,<<,>,>>
+            useDate(value - currDay);
+          }
+        },
+        controller: pageController,
+        itemCount: 2 * 60,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.all(30),
+            child: SingleChildScrollView(
+              child: Column(
                 children: [
-                  ElevatedButton(
-                    onPressed: () => useDate(-7),
-                    child: const Text("<<"),
+                  Text("index $index currDay $currDay"),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async => await useDate(-7),
+                        child: const Text("<<"),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async => await useDate(-1),
+                        child: const Text("<"),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async => await useDate(0),
+                        child: const Text("Heute"),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async => await useDate(1),
+                        child: const Text(">"),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async => await useDate(7),
+                        child: const Text(">>"),
+                      ),
+                    ],
                   ),
-                  ElevatedButton(
-                    onPressed: () => useDate(-1),
-                    child: const Text("<"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => useDate(0),
-                    child: const Text("Heute"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => useDate(1),
-                    child: const Text(">"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => useDate(7),
-                    child: const Text(">>"),
+                  const SizedBox(height: 20),
+                  FutureBuilder(
+                    future: initFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircularProgressIndicator();
+                      }
+                      eigenschaften = snapshot.data[1];
+                      if (eigenschaften?[0] == "") {
+                        return Container(
+                            padding: const EdgeInsets.symmetric(vertical: 100),
+                            child:
+                                const Text("Bitte erst Namen etc. eingeben"));
+                      } else {
+                        return Column(
+                          children: [
+                            Einsatz(1, store),
+                            const SizedBox(height: 20),
+                            Einsatz(2, store),
+                            const SizedBox(height: 20),
+                            Einsatz(3, store),
+                          ],
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              FutureBuilder(
-                future: initFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const CircularProgressIndicator();
-                  }
-                  eigenschaften = snapshot.data[1];
-                  if (eigenschaften?[0] == "") {
-                    return Container(
-                        padding: const EdgeInsets.symmetric(vertical: 100),
-                        child: const Text("Bitte erst Namen etc. eingeben"));
-                  } else {
-                    return Column(
-                      children: [
-                        Einsatz(1, store),
-                        const SizedBox(height: 20),
-                        Einsatz(2, store),
-                        const SizedBox(height: 20),
-                        Einsatz(3, store),
-                      ],
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
+            ),
+//            ),
+          );
+        },
       ),
     );
   }
