@@ -168,6 +168,18 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
     state = FpflegeDay.empty(state.dayIdx);
   }
 
+  Future<List<Map<String, Object?>>> loadMonthRaw(String monthSearch) async {
+    db ??= await _getDatabase();
+    final data = await db!.query(
+      "arbeitsblatt",
+      where: "tag like ?",
+      whereArgs: [monthSearch],
+      orderBy: "tag,fnr",
+    );
+    print("xxxx data $data");
+    return data;
+  }
+
   Future<List<Object>> readEigenschaften() async {
     db ??= await _getDatabase();
     final data = await db!.query(

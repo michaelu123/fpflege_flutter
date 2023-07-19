@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpflege/db_provider.dart';
 import 'package:fpflege/eigenschaften_screen.dart';
 import 'package:fpflege/einsatz.dart';
+import 'package:fpflege/send_excel.dart';
 import 'package:fpflege/utils.dart';
 
 class Arbeitsblatt extends ConsumerStatefulWidget {
@@ -12,6 +13,8 @@ class Arbeitsblatt extends ConsumerStatefulWidget {
   ConsumerState<Arbeitsblatt> createState() => _ArbeitsblattState();
 }
 
+const int tODAY = 999; // need a special value for "today"
+
 class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
   var date = DateTime.now();
   late Future<void> Function(int, String, String) store;
@@ -20,7 +23,7 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
   late Future initFuture;
   List<Object>? eigenschaften;
   late PageController pageController;
-  int currDay = 60;
+  int currDay = daysSpan;
 
   // in PageView.onPageChanged we must know
   //if we changed the page via the controller (explicitChange=true)
@@ -34,24 +37,27 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
     eigFuture = ref.read(dbProvider.notifier).readEigenschaften();
     initFuture = Future.wait([dayFuture, eigFuture]);
     store = ref.read(dbProvider.notifier).store;
-    // day 60 = today,
-    pageController = PageController(initialPage: 60);
+    // day 70 = today,
+    pageController = PageController(initialPage: daysSpan);
   }
 
   Future<void> useDate(int days) async {
     explicitChange = true;
-    if (days == 0) currDay = 60;
+    if (days == tODAY) {
+      currDay = daysSpan;
+      days = 0;
+    }
     currDay += days;
     if (currDay < 0) {
       currDay = 0;
-    } else if (currDay >= 2 * 60) {
-      currDay = 2 * 60 - 1;
+    } else if (currDay >= 2 * daysSpan) {
+      currDay = 2 * daysSpan - 1;
     }
     //print("xxxx useDate $days $currDay");
     await pageController.animateToPage(currDay,
         duration: const Duration(milliseconds: 500), curve: Curves.linear);
     final now = DateTime.now();
-    date = now.add(Duration(days: currDay - 60));
+    date = now.add(Duration(days: currDay - daysSpan));
     await ref.read(dbProvider.notifier).load(date);
     setState(() {});
     explicitChange = false;
@@ -61,9 +67,12 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
     await ref.read(dbProvider.notifier).clearAll();
   }
 
+  final scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: scaffoldKey,
       appBar: AppBar(
         title: Text(
           date2Txt(date),
@@ -88,8 +97,26 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
         actions: [
           IconButton(
             icon: const Icon(Icons.email),
-            onPressed: () {
+            onPressed: () async {
               print("xxxx send email $eigenschaften");
+              final search = await selectMonthSearch(context);
+              if (search == null) return;
+              print("xxxx got1 $search");
+              final missDayIdx = await sendExcel(ref, search);
+              if (missDayIdx != null) {
+                int? dayDelta = deltaDays(missDayIdx);
+                if (dayDelta != null) {
+                  // ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  ScaffoldMessenger.of(scaffoldKey.currentContext!)
+                      .showSnackBar(SnackBar(
+                          content: Text(
+                              "Bitte Daten vom $missDayIdx vervollständigen!")));
+
+                  print(
+                      "xxxx dayDelta $dayDelta currDay $currDay ${dayDelta - currDay + 65}");
+                  useDate(dayDelta + 65 - currDay);
+                }
+              }
             },
           ),
           IconButton(
@@ -108,7 +135,7 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
           }
         },
         controller: pageController,
-        itemCount: 2 * 60,
+        itemCount: 2 * daysSpan,
         itemBuilder: (context, index) {
           return Padding(
             padding: const EdgeInsets.all(30),
@@ -128,7 +155,7 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
                         child: const Text("<"),
                       ),
                       ElevatedButton(
-                        onPressed: () async => await useDate(0),
+                        onPressed: () async => await useDate(tODAY),
                         child: const Text("Heute"),
                       ),
                       ElevatedButton(
@@ -170,7 +197,6 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
                 ],
               ),
             ),
-//            ),
           );
         },
       ),

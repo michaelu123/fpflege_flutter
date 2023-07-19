@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:string_validator/string_validator.dart';
 
@@ -121,4 +122,88 @@ bool weekEnd(DateTime date) {
 
 int val2Int(String value) {
   return value == "true" || value == "1" ? 1 : 0;
+}
+
+final months = [
+  "Dezember",
+  "Januar",
+  "Februar",
+  "März",
+  "April",
+  "Mai",
+  "Juni",
+  "Juli",
+  "August",
+  "September",
+  "Oktober",
+  "November",
+  "Dezember",
+  "Januar",
+];
+
+// We want to be able to send the previous, current or next month.
+// If today is the 31.08, and we want to send July,
+// we must be able in the worst case to go back to 1.July, so ca.31+31 days.
+const daysSpan = 65;
+
+Future<String?> selectMonthSearch(BuildContext ctx) async {
+  final now = DateTime.now();
+  final m = now.month;
+  int y = now.year;
+
+  int? monthNo = await showDialog<int>(
+      context: ctx,
+      builder: (ctx) {
+        return SimpleDialog(
+          title: const Text("Welcher Monat?"),
+          children: [
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, m - 1),
+              child: Text(months[m - 1]),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, m),
+              child: Text(months[m]),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, m + 1),
+              child: Text(months[m + 1]),
+            ),
+          ],
+        );
+      });
+  if (monthNo == null) return null;
+  if (monthNo == 0) {
+    y--;
+    monthNo = 12;
+  }
+  if (monthNo == 13) {
+    y++;
+    monthNo = 1;
+  }
+  int m10 = monthNo ~/ 10;
+  int m1 = monthNo % 10;
+  return "$y.$m10$m1.__"; // where tag like 2023.06.__
+}
+
+int? deltaDays(String dayIdx) {
+  // yes doing a simple sequential search...
+  final now = DateTime.now();
+  String nowIdx = date2Idx(now);
+  if (dayIdx == nowIdx) {
+    return 0;
+  } else if (dayIdx.compareTo(nowIdx) < 0) {
+    for (int i = 1; i < daysSpan; i++) {
+      if (date2Idx(now.subtract(Duration(days: i))) == dayIdx) {
+        return -i;
+      }
+    }
+  } else {
+    for (int i = 1; i < daysSpan; i++) {
+      if (date2Idx(now.add(Duration(days: i))) == dayIdx) {
+        return i;
+      }
+    }
+  }
+  return null;
 }
