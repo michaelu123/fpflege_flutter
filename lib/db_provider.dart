@@ -124,13 +124,7 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
     db ??= await _getDatabase();
     int chgCnt = await db!.update(
       "arbeitsblatt",
-      {
-        fieldNameMap[name]!: name == "kh"
-            ? val2Int(value)
-            : value == ""
-                ? null
-                : value
-      },
+      {fieldNameMap[name]!: name == "kh" ? val2Int(value) : val2Str(value)},
       where: "tag=? and fnr=?",
       whereArgs: [state.dayIdx, no],
     );
@@ -138,11 +132,7 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
       await db!.insert("arbeitsblatt", {
         "tag": state.dayIdx,
         "fnr": no,
-        fieldNameMap[name]!: name == "kh"
-            ? val2Int(value)
-            : value == ""
-                ? null
-                : value,
+        fieldNameMap[name]!: name == "kh" ? val2Int(value) : val2Str(value),
       });
     }
   }
@@ -180,16 +170,16 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
 
   Future<List<Map<String, Object?>>> loadMonthRaw(String monthSearch) async {
     db ??= await _getDatabase();
-    await db!.delete("arbeitsblatt",
-        where: "einsatzstelle=? and beginn=? and ende=?",
-        whereArgs: ["", "", ""]);
+    await db!.delete(
+      "arbeitsblatt",
+      where: "einsatzstelle is null and beginn is null and ende is null",
+    );
     final data = await db!.query(
       "arbeitsblatt",
       where: "tag like ?",
       whereArgs: [monthSearch],
       orderBy: "tag,fnr",
     );
-    print("xxxx data $data");
     return data;
   }
 

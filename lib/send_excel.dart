@@ -2,15 +2,17 @@ import 'package:fpflege/db_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpflege/utils.dart';
 
-Future<String?> sendExcel(WidgetRef ref, int year, month) async {
+Future<String?> sendExcel(
+    WidgetRef ref, int year, month, List<Object> eigenschaften) async {
   int m10 = month ~/ 10;
   int m1 = month % 10;
   final search = "$year.$m10$m1.__"; // where tag like 2023.06.__
-  print("xxxx search $search");
 
   final data = await ref.read(dbProvider.notifier).loadMonthRaw(search);
   final dayIdx = checkComplete(data, year, month);
-  return dayIdx;
+  if (dayIdx != null) return dayIdx;
+  print("xxxx eigen $eigenschaften");
+  return null;
 }
 
 String? checkComplete(List<Map<String, Object?>> data, int year, int month) {
@@ -23,7 +25,6 @@ String? checkComplete(List<Map<String, Object?>> data, int year, int month) {
   for (int i = 1; i <= 31; i++) {
     DateTime day = DateTime(year, month, i);
     String dayIdx = date2Idx(day); // 06.31 -> 07.01
-    print("xxxx day $i $dayIdx ${day.weekday}");
     if (!dayIdx.startsWith(monthPrefix)) break; // iterated over whole month
 
     if (dataX >= data.length) {
@@ -55,7 +56,8 @@ String? checkComplete(List<Map<String, Object?>> data, int year, int month) {
     Map<String, Object?>? lastRow;
     while ((row["tag"]! as String).startsWith(dayIdx)) {
       if ((row["fnr"] as int) != nextFnr) return dayIdx;
-      if (isEmpty(row["beginn"]) ||
+      if (isEmpty(row["einsatzstelle"]) ||
+          isEmpty(row["beginn"]) ||
           isEmpty(row["ende"]) ||
           (row["beginn"] as String).compareTo(row["ende"] as String) >= 0) {
         return dayIdx;

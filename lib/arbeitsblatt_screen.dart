@@ -98,11 +98,11 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
           IconButton(
             icon: const Icon(Icons.email),
             onPressed: () async {
-              print("xxxx send email $eigenschaften");
               final l = await selectMonthSearch(context);
               if (l == null) return;
               final [year, month] = l;
-              final missDayIdx = await sendExcel(ref, year, month);
+              final missDayIdx =
+                  await sendExcel(ref, year, month, eigenschaften!);
               if (missDayIdx != null) {
                 int? dayDelta = deltaDays(missDayIdx);
                 if (dayDelta != null) {
@@ -111,9 +111,6 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
                       .showSnackBar(SnackBar(
                           content: Text(
                               "Bitte Daten vom $missDayIdx vervollständigen!")));
-
-                  print(
-                      "xxxx dayDelta $dayDelta currDay $currDay ${dayDelta - currDay + 65}");
                   useDate(dayDelta + 65 - currDay);
                 }
               }
@@ -142,7 +139,6 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  Text("index $index currDay $currDay"),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

@@ -124,6 +124,11 @@ int val2Int(String value) {
   return value == "true" || value == "1" ? 1 : 0;
 }
 
+String? val2Str(String? value) {
+  if (value == null || value == "") return null;
+  return value!;
+}
+
 final months = [
   "Dezember",
   "Januar",

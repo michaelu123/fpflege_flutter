@@ -38,7 +38,8 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
       if (!context.mounted) return;
       Navigator.of(context).pop();
     } catch (e) {
-      print("exception $e!");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       setState(() => isSending = false);
     }
