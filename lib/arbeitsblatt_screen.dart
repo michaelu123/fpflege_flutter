@@ -99,10 +99,10 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
             icon: const Icon(Icons.email),
             onPressed: () async {
               print("xxxx send email $eigenschaften");
-              final search = await selectMonthSearch(context);
-              if (search == null) return;
-              print("xxxx got1 $search");
-              final missDayIdx = await sendExcel(ref, search);
+              final l = await selectMonthSearch(context);
+              if (l == null) return;
+              final [year, month] = l;
+              final missDayIdx = await sendExcel(ref, year, month);
               if (missDayIdx != null) {
                 int? dayDelta = deltaDays(missDayIdx);
                 if (dayDelta != null) {

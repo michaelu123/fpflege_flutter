@@ -146,7 +146,7 @@ final months = [
 // we must be able in the worst case to go back to 1.July, so ca.31+31 days.
 const daysSpan = 65;
 
-Future<String?> selectMonthSearch(BuildContext ctx) async {
+Future<List<int>?> selectMonthSearch(BuildContext ctx) async {
   final now = DateTime.now();
   final m = now.month;
   int y = now.year;
@@ -181,9 +181,7 @@ Future<String?> selectMonthSearch(BuildContext ctx) async {
     y++;
     monthNo = 1;
   }
-  int m10 = monthNo ~/ 10;
-  int m1 = monthNo % 10;
-  return "$y.$m10$m1.__"; // where tag like 2023.06.__
+  return [y, monthNo];
 }
 
 int? deltaDays(String dayIdx) {
@@ -206,4 +204,9 @@ int? deltaDays(String dayIdx) {
     }
   }
   return null;
+}
+
+bool isEmpty(Object? v) {
+  if (v == null) return true;
+  return (v as String) == "";
 }

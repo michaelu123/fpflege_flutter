@@ -59,16 +59,16 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
 
     var dayRes = FpflegeDay.empty(dayIdx);
 
-    if (data.isEmpty) {
-      // for testing
-      String dy = date2Txt(date);
-      await db!.insert("arbeitsblatt", {
-        "tag": dayIdx,
-        "fnr": 3,
-        "einsatzstelle": dy,
-      });
-      dayRes = dayRes.copyWith(3, "einsatzstelle", dy);
-    }
+    // if (data.isEmpty) {
+    //   // for testing
+    //   String dy = date2Txt(date);
+    //   await db!.insert("arbeitsblatt", {
+    //     "tag": dayIdx,
+    //     "fnr": 3,
+    //     "einsatzstelle": dy,
+    //   });
+    //   dayRes = dayRes.copyWith(3, "einsatzstelle", dy);
+    // }
 
     for (final row in data) {
       final noVal = row["fnr"];
@@ -82,7 +82,7 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
       if (begin != null) {
         dayRes = dayRes.copyWith(no, "begin", begin as String);
       }
-      final end = row["end"];
+      final end = row["ende"];
       if (end != null) {
         dayRes = dayRes.copyWith(no, "end", end as String);
       }
@@ -124,7 +124,13 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
     db ??= await _getDatabase();
     int chgCnt = await db!.update(
       "arbeitsblatt",
-      {fieldNameMap[name]!: name == "kh" ? val2Int(value) : value},
+      {
+        fieldNameMap[name]!: name == "kh"
+            ? val2Int(value)
+            : value == ""
+                ? null
+                : value
+      },
       where: "tag=? and fnr=?",
       whereArgs: [state.dayIdx, no],
     );
@@ -132,7 +138,11 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
       await db!.insert("arbeitsblatt", {
         "tag": state.dayIdx,
         "fnr": no,
-        fieldNameMap[name]!: name == "kh" ? val2Int(value) : value,
+        fieldNameMap[name]!: name == "kh"
+            ? val2Int(value)
+            : value == ""
+                ? null
+                : value,
       });
     }
   }
@@ -170,6 +180,9 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
 
   Future<List<Map<String, Object?>>> loadMonthRaw(String monthSearch) async {
     db ??= await _getDatabase();
+    await db!.delete("arbeitsblatt",
+        where: "einsatzstelle=? and beginn=? and ende=?",
+        whereArgs: ["", "", ""]);
     final data = await db!.query(
       "arbeitsblatt",
       where: "tag like ?",
