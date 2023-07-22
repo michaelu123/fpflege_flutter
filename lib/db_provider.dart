@@ -192,7 +192,7 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
       "eigenschaften",
     );
     if (data.isEmpty) {
-      return ["", "", "", ""];
+      return ["", "", "", "", ""];
     }
     final vorname = data[0]["vorname"] as String;
     final nachname = data[0]["nachname"] as String;

@@ -107,7 +107,8 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
                         initialValue: newEmail,
                         maxLength: 50,
                         decoration: const InputDecoration(
-                          label: Text('Meine Email-Adresse (beruflich)'),
+                          label: Text(
+                              'Email-Adresse des Empfängers (z.B. fpflege@die-mitterfelder.de)'),
                         ),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {

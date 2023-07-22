@@ -1,8 +1,11 @@
 import 'dart:io';
 
+import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:fpflege/db_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart';
+import 'package:path_provider/path_provider.dart' as syspaths;
+
 import 'package:fpflege/utils.dart';
 
 Future<String?> sendExcel(
@@ -16,7 +19,17 @@ Future<String?> sendExcel(
   if (dayIdx != null) return dayIdx;
   print("xxxx eigen $eigenschaften");
   final bytes = makeExcel(year, month, data, eigenschaften);
-  await writeExcel(bytes);
+  final xlsx = await writeExcel(bytes, month);
+
+  if (Platform.isAndroid) {
+    await sendEmail(
+      month,
+      eigenschaften[0] as String, // vorname
+      eigenschaften[1] as String, // nachname
+      eigenschaften[2] as String, // recipient
+      xlsx, // xlsx file
+    );
+  }
   return null;
 }
 
@@ -109,21 +122,21 @@ final spaltenNamen = [
 ];
 
 final columnWidths = [
-  20,
+  17,
   30,
-  10,
-  10,
-  5,
+  8,
+  8,
+  3,
   8,
   30,
-  10,
-  10,
-  5,
+  8,
+  8,
+  3,
   8,
   30,
-  10,
-  10,
-  5,
+  8,
+  8,
+  3,
   10,
   10,
   10,
@@ -167,12 +180,18 @@ List<int> makeExcel(
   Map<String, double> timePerEinsatz = {};
   Map<String, Set<String>> daysPerEinsatz = {};
   Set<String> arbeitsTage = {}; // an wievielen Tagen gearbeitet
+
   String lastDday = data[0]["tag"] as String;
+  DateTime d = idx2Date(lastDday);
+  soll = sollStunden(d.weekday, modoStunden, frStunden);
+  if (d.weekday != DateTime.saturday && d.weekday != DateTime.sunday) {
+    wochenTage++;
+  }
 
   for (final drow in data) {
     String dday = drow["tag"] as String;
-    DateTime d = idx2Date(dday);
     if (dday != lastDday) {
+      d = idx2Date(dday);
       sheet.getRangeByIndex(row, 16).numberFormat = hourFormat;
       sheet.getRangeByIndex(row, 16).setNumber(ist);
       sheet.getRangeByIndex(row, 17).numberFormat = hourFormat;
@@ -282,6 +301,32 @@ List<int> makeExcel(
   return bytes;
 }
 
-Future<void> writeExcel(List<int> bytes) async {
-  await File("fpflege1.xlsx").writeAsBytes(bytes);
+Future<File> writeExcel(List<int> bytes, int month) async {
+  final monthName = months[month];
+  if (Platform.isAndroid) {
+    final appDir = await syspaths.getApplicationDocumentsDirectory();
+    return await File("${appDir.path}/$monthName.xlsx").writeAsBytes(bytes);
+  } else {
+    // Platform.isWindows
+    return await File("$monthName.xlsx").writeAsBytes(bytes);
+  }
+}
+
+Future<void> sendEmail(
+  int month,
+  String vorname,
+  String nachname,
+  String emailadresse,
+  File xlsx,
+) async {
+  final monthName = months[month];
+  final Email email = Email(
+    body:
+        "Anbei das Arbeitsblatt von $vorname $nachname für den Monat $monthName.",
+    subject: "Arbeitsblatt $monthName",
+    recipients: [emailadresse],
+    attachmentPaths: [xlsx.path],
+    isHTML: false,
+  );
+  await FlutterEmailSender.send(email);
 }

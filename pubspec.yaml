@@ -44,6 +44,7 @@ dependencies:
   sqflite: ^2.2.8+4
   sqflite_common_ffi: ^2.2.5
   syncfusion_flutter_xlsio: ^22.1.39
+  flutter_email_sender: ^6.0.1
 
 dev_dependencies:
   flutter_test:
