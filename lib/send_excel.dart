@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:fpflege/db_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart';
 import 'package:fpflege/utils.dart';
 
 Future<String?> sendExcel(
@@ -12,6 +15,8 @@ Future<String?> sendExcel(
   final dayIdx = checkComplete(data, year, month);
   if (dayIdx != null) return dayIdx;
   print("xxxx eigen $eigenschaften");
+  final bytes = makeExcel(year, month, data, eigenschaften);
+  await writeExcel(bytes);
   return null;
 }
 
@@ -80,4 +85,203 @@ String? checkComplete(List<Map<String, Object?>> data, int year, int month) {
     }
   }
   return null;
+}
+
+final spaltenNamen = [
+  "Tag",
+  "1.Einsatzstelle",
+  "Beginn",
+  "Ende",
+  "KH",
+  "Fahrt",
+  "2.Einsatzstelle",
+  "Beginn",
+  "Ende",
+  "KH",
+  "Fahrt",
+  "3.Einsatzstelle",
+  "Beginn",
+  "Ende",
+  "KH",
+  "Arbeitsstunden",
+  "Sollstunden",
+  "Überstunden",
+];
+
+final columnWidths = [
+  20,
+  30,
+  10,
+  10,
+  5,
+  8,
+  30,
+  10,
+  10,
+  5,
+  8,
+  30,
+  10,
+  10,
+  5,
+  10,
+  10,
+  10,
+];
+
+// Termine, bei denen Arbeitszeit und Sollzeit 0 sind
+final nichtArbeit = ["urlaub", "krank", "feiertag", "üst-abbau"];
+
+List<int> makeExcel(
+  int year,
+  int month,
+  List<Map<String, Object?>> data,
+  List<Object> eigenschaften,
+) {
+  final modoStunden =
+      double.parse((eigenschaften[3] as String).replaceAll(",", "."));
+  final frStunden =
+      double.parse((eigenschaften[4] as String).replaceAll(",", "."));
+  final sheetName = months[month];
+
+  final wb = Workbook();
+  final sheet = wb.worksheets[0];
+  sheet.name = sheetName;
+  sheet.getRangeByName("A2").freezePanes();
+  //  sheet.getRangeByName('A1').columnWidth = 20;
+
+  const hourFormat = "#,##0.00";
+  int row = 1;
+  int col = 1;
+  for (final name in spaltenNamen) {
+    sheet.getRangeByIndex(row, col).setText(name);
+    sheet.getRangeByIndex(row, col).columnWidth =
+        columnWidths[col - 1].toDouble();
+    col++;
+  }
+
+  row = 2;
+  double soll = 0, sumSoll = 0;
+  double ist = 0, sumIst = 0;
+  int wochenTage = 0; // Anzahl der Tage Mo-Fr
+  Map<String, double> timePerEinsatz = {};
+  Map<String, Set<String>> daysPerEinsatz = {};
+  Set<String> arbeitsTage = {}; // an wievielen Tagen gearbeitet
+  String lastDday = data[0]["tag"] as String;
+
+  for (final drow in data) {
+    String dday = drow["tag"] as String;
+    DateTime d = idx2Date(dday);
+    if (dday != lastDday) {
+      sheet.getRangeByIndex(row, 16).numberFormat = hourFormat;
+      sheet.getRangeByIndex(row, 16).setNumber(ist);
+      sheet.getRangeByIndex(row, 17).numberFormat = hourFormat;
+      sheet.getRangeByIndex(row, 17).setNumber(soll);
+      sheet.getRangeByIndex(row, 18).numberFormat = hourFormat;
+      sheet.getRangeByIndex(row, 18).setNumber(ist - soll);
+      row++;
+      lastDday = dday;
+      sumIst += ist;
+      sumSoll += soll;
+      ist = 0;
+      soll = sollStunden(d.weekday, modoStunden, frStunden);
+      if (d.weekday != DateTime.saturday && d.weekday != DateTime.sunday) {
+        wochenTage++;
+      }
+    }
+    sheet.getRangeByIndex(row, 1).setText(date2Txt(d));
+    if ((drow["fnr"] as int) == 1) {
+      col = 2;
+    } else if ((drow["fnr"] as int) == 2) {
+      col = 7;
+    } else {
+      col = 12;
+    }
+    final einsatzStelle = drow["einsatzstelle"] as String;
+    final beginn = drow["beginn"] as String;
+    final ende = drow["ende"] as String;
+    sheet.getRangeByIndex(row, col).setText(einsatzStelle);
+    sheet.getRangeByIndex(row, col + 1).setText(beginn);
+    sheet.getRangeByIndex(row, col + 2).setText(ende);
+    sheet.getRangeByIndex(row, col + 3).setText(val2Bool(drow["kh"]));
+
+    if (col < 12) {
+      String fahrtZeit = (drow["fahrtzeit"] ?? "0.0") as String;
+      if (fahrtZeit.isEmpty) fahrtZeit = "0.0";
+      fahrtZeit = fahrtZeit.replaceAll(",", ".");
+      sheet.getRangeByIndex(row, col + 4).setNumber(double.parse(fahrtZeit));
+      if (fahrtZeit != "0.0") {
+        ist += 0.5;
+        addTime(timePerEinsatz, "Fahrtzeit", 0.5);
+        addDay(daysPerEinsatz, "Fahrtzeit", dday);
+      }
+    }
+
+    final diffZeit = diffHHMM(beginn, ende);
+    if (nichtArbeit.contains(einsatzStelle.toLowerCase())) {
+      soll -= diffZeit;
+    } else {
+      ist += diffZeit;
+      arbeitsTage.add(dday);
+    }
+    addTime(timePerEinsatz, einsatzStelle, diffZeit);
+    addDay(daysPerEinsatz, einsatzStelle, dday);
+  }
+  sheet.getRangeByIndex(row, 16).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 16).setNumber(ist);
+  sheet.getRangeByIndex(row, 17).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 17).setNumber(soll);
+  sheet.getRangeByIndex(row, 18).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 18).setNumber(ist - soll);
+  sumIst += ist;
+  sumSoll += soll;
+
+  int lrow = row;
+  row += 2;
+  sheet.getRangeByIndex(row, 1).setText("Formeln");
+  sheet.getRangeByIndex(row, 16).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 16).setFormula("=SUM(P2:P$lrow)"); // 16=R
+  sheet.getRangeByIndex(row, 17).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 17).setFormula("=SUM(Q2:Q$lrow)"); // 17=Q
+  sheet.getRangeByIndex(row, 18).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 18).setFormula("=SUM(R2:R$lrow)"); // 18=R
+
+  row++;
+  sheet.getRangeByIndex(row, 1).setText("Summen");
+  sheet.getRangeByIndex(row, 16).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 16).setNumber(sumIst); // 16=R
+  sheet.getRangeByIndex(row, 17).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 17).setNumber(sumSoll); // 17=Q
+  sheet.getRangeByIndex(row, 18).numberFormat = hourFormat;
+  sheet.getRangeByIndex(row, 18).setNumber(sumIst - sumSoll); // 18=R
+
+  row += 2;
+  sheet.getRangeByIndex(row, 2).setText("Wochentage");
+  sheet.getRangeByIndex(row, 3).setNumber(wochenTage.toDouble());
+  row += 1;
+  sheet.getRangeByIndex(row, 2).setText("Arbeitstage");
+  sheet.getRangeByIndex(row, 3).setNumber(arbeitsTage.length.toDouble());
+
+  row += 2;
+  sheet.getRangeByIndex(row, 2).setText("Einsatzstelle");
+  sheet.getRangeByIndex(row, 3).setText("Tage");
+  sheet.getRangeByIndex(row, 4).setText("Stunden");
+  final list = timePerEinsatz.keys.toList();
+  list.sort();
+  for (final key in list) {
+    row++;
+    sheet.getRangeByIndex(row, 2).setText(key);
+    sheet
+        .getRangeByIndex(row, 3)
+        .setNumber(daysPerEinsatz[key]!.length.toDouble());
+    sheet.getRangeByIndex(row, 4).setNumber(timePerEinsatz[key]);
+  }
+
+  final bytes = wb.saveAsStream();
+  wb.dispose();
+  return bytes;
+}
+
+Future<void> writeExcel(List<int> bytes) async {
+  await File("fpflege1.xlsx").writeAsBytes(bytes);
 }

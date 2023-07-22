@@ -26,7 +26,8 @@ Future<Database> _getDatabase() async {
           CREATE TABLE eigenschaften(
             vorname TEXT,
             nachname TEXT,
-            wochenstunden TEXT,
+            modostunden TEXT,
+            frstunden TEXT,
             emailadresse TEXT)
       """);
     },
@@ -108,7 +109,9 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
       for (int i = 1; i < 5; i++) {
         final prevDate = date.subtract(Duration(days: i));
         final prevDay = await loadDay(prevDate);
-        if (prevDay.fam1.einsatzstelle != "") {
+        final prevEinsatz = prevDay.fam1.einsatzstelle;
+
+        if (prevEinsatz != "" && !skipES.contains(prevEinsatz.toLowerCase())) {
           String dayIdx = date2Idx(date);
           day = FpflegeDay(dayIdx, prevDay.fam1, prevDay.fam2, prevDay.fam3);
           await storeDay(day);
@@ -194,20 +197,22 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
     final vorname = data[0]["vorname"] as String;
     final nachname = data[0]["nachname"] as String;
     final email = data[0]["emailadresse"] as String;
-    final stunden = data[0]["wochenstunden"] as String;
+    final modoStunden = data[0]["modostunden"] as String;
+    final frStunden = data[0]["frstunden"] as String;
 
-    return [vorname, nachname, email, stunden];
+    return [vorname, nachname, email, modoStunden, frStunden];
   }
 
-  Future<void> storeEigenschaften(
-      String vorname, String nachname, String email, String stunden) async {
+  Future<void> storeEigenschaften(String vorname, String nachname, String email,
+      String modoStunden, String frStunden) async {
     db ??= await _getDatabase();
     await db!.delete("eigenschaften");
     await db!.insert("eigenschaften", {
       "vorname": vorname,
       "nachname": nachname,
       "emailadresse": email,
-      "wochenstunden": stunden,
+      "modostunden": modoStunden,
+      "frstunden": frStunden,
     });
   }
 }

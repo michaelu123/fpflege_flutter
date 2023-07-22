@@ -43,6 +43,7 @@ dependencies:
   path_provider: ^2.0.15
   sqflite: ^2.2.8+4
   sqflite_common_ffi: ^2.2.5
+  syncfusion_flutter_xlsio: ^22.1.39
 
 dev_dependencies:
   flutter_test:

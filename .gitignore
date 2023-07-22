@@ -46,3 +46,5 @@ app.*.map.json
 /macos
 /test
 linux
+
+*.xlsx

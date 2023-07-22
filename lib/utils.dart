@@ -13,6 +13,16 @@ final values = [
   "Sonstiges"
 ];
 
+// einige Termine, von denen wir annehmen, daß sie sich nicht am nächsten Tag wiederholen:
+final skipES = [
+  "krank",
+  "feiertag",
+  "üst-abbau",
+  "fortbildung",
+  "supervision",
+  "dienstbesprechung"
+];
+
 String standardize(String name, String value) {
   value = value.trim();
   if (name == "einsatzstelle") {
@@ -115,6 +125,27 @@ String date2Idx(DateTime date) {
   return DateFormat("yyyy.MM.dd").format(date);
 }
 
+DateTime idx2Date(String idx) {
+  int y = int.parse(idx.substring(0, 4));
+  int m = int.parse(idx.substring(5, 7));
+  int d = int.parse(idx.substring(8, 10));
+  return DateTime(y, m, d);
+}
+
+double sollStunden(int weekday, double modoStunden, double frStunden) {
+  switch (weekday) {
+    case DateTime.monday:
+    case DateTime.tuesday:
+    case DateTime.wednesday:
+    case DateTime.thursday:
+      return modoStunden;
+    case DateTime.friday:
+      return frStunden;
+    default:
+      return 0.0;
+  }
+}
+
 bool weekEnd(DateTime date) {
   final wd = date.weekday;
   return wd == DateTime.saturday || wd == DateTime.sunday;
@@ -126,7 +157,41 @@ int val2Int(String value) {
 
 String? val2Str(String? value) {
   if (value == null || value == "") return null;
-  return value!;
+  return value;
+}
+
+String? val2Bool(Object? value) {
+  if (value == null) return "";
+  final v = value as int;
+  return v != 0 ? "J" : "";
+}
+
+double diffHHMM(String b, String e) {
+  //b, e = "hh:mm", e.g. b=08:30, e=11:00, bm=8*60+30m, em=11*60m,
+  // em-bm= 2*60+30m = 2,5h
+  int bm = int.parse(b.substring(0, 2)) * 60 + int.parse(b.substring(3, 5));
+  int em = int.parse(e.substring(0, 2)) * 60 + int.parse(e.substring(3, 5));
+  int diffm = em - bm;
+  if (diffm > 360) diffm -= 30; // 30 min rest if >6h
+  return (diffm ~/ 60) + (diffm % 60) / 60.0;
+}
+
+void addTime(Map<String, double> map, String key, double value) {
+  double? o = map[key];
+  if (o == null) {
+    map[key] = value;
+  } else {
+    map[key] = o + value;
+  }
+}
+
+void addDay(Map<String, Set<String>> map, String key, String value) {
+  Set<String>? o = map[key];
+  if (o == null) {
+    o = <String>{};
+    map[key] = o;
+  }
+  o.add(value);
 }
 
 final months = [
@@ -214,4 +279,21 @@ int? deltaDays(String dayIdx) {
 bool isEmpty(Object? v) {
   if (v == null) return true;
   return (v as String) == "";
+}
+
+String? checkStunden(String? value) {
+  value = (value ?? "0,0").replaceFirst(",", ".");
+  double? dv = double.tryParse(value);
+  if (dv == null || dv < 4 || dv > 8) {
+    return "Stunden zwischen 4 und 8";
+  }
+
+  // n or n,5, some checks already done in
+  if (!value.contains(".")) {
+    return null;
+  }
+  if (value.substring(2) != "5") {
+    return "Auf halbe Stunden gerundet (z.B. 7,5)";
+  }
+  return null;
 }

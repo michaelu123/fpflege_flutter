@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpflege/db_provider.dart';
+import 'package:fpflege/utils.dart';
 
 class Eigenschaften extends ConsumerStatefulWidget {
   const Eigenschaften({super.key});
@@ -16,7 +17,8 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
   String newVorname = "";
   String newNachname = "";
   String newEmail = "";
-  String newStunden = ""; // think about 37,5 !
+  String newMoDoStunden = ""; // String because of half hours
+  String newFrStunden = "";
   var isSending = false;
 
   @override
@@ -30,9 +32,8 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
     if (!state.validate()) return;
     try {
       state.save();
-      await ref
-          .read(dbProvider.notifier)
-          .storeEigenschaften(newVorname, newNachname, newEmail, newStunden);
+      await ref.read(dbProvider.notifier).storeEigenschaften(
+          newVorname, newNachname, newEmail, newMoDoStunden, newFrStunden);
 
       // ignore: use_build_context_synchronously
       if (!context.mounted) return;
@@ -49,7 +50,7 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Ihre Daten"),
+        title: const Text("Meine Daten"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(12),
@@ -64,7 +65,8 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
                 newVorname = eigenschaften[0] as String;
                 newNachname = eigenschaften[1] as String;
                 newEmail = eigenschaften[2] as String;
-                newStunden = eigenschaften[3] as String;
+                newMoDoStunden = eigenschaften[3] as String;
+                newFrStunden = eigenschaften[4] as String;
                 return Form(
                   key: _formKey,
                   child: Column(
@@ -105,7 +107,7 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
                         initialValue: newEmail,
                         maxLength: 50,
                         decoration: const InputDecoration(
-                          label: Text('Email'),
+                          label: Text('Meine Email-Adresse (beruflich)'),
                         ),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
@@ -122,21 +124,32 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
                         },
                       ),
                       TextFormField(
-                        initialValue: newStunden,
+                        initialValue: newMoDoStunden,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                          label: Text("Wochenstunden"),
+                          label: Text("Arbeitsstunden Mo-Do"),
                         ),
                         validator: (value) {
-                          value = (value ?? "0,0").replaceFirst(",", ".");
-                          double? dv = double.tryParse(value);
-                          if (dv == null || dv < 20 || dv > 40) {
-                            return "Eine Zahl zwischen 20 und 40";
-                          }
-                          return null;
+                          final msg = checkStunden(value);
+                          return msg;
                         },
                         onSaved: (v) {
-                          newStunden = v ?? "";
+                          newMoDoStunden = v ?? "";
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        initialValue: newFrStunden,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          label: Text("Arbeitsstunden am Freitag"),
+                        ),
+                        validator: (value) {
+                          final msg = checkStunden(value);
+                          return msg;
+                        },
+                        onSaved: (v) {
+                          newFrStunden = v ?? "";
                         },
                       ),
                       const SizedBox(height: 20),

@@ -26,8 +26,8 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
   int currDay = daysSpan;
 
   // in PageView.onPageChanged we must know
-  //if we changed the page via the controller (explicitChange=true)
-  //or by swiping (explicitChange=false)
+  // if we changed the page via the controller (explicitChange=true)
+  // or by swiping (explicitChange=false)
   bool explicitChange = false;
 
   @override
@@ -37,7 +37,7 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
     eigFuture = ref.read(dbProvider.notifier).readEigenschaften();
     initFuture = Future.wait([dayFuture, eigFuture]);
     store = ref.read(dbProvider.notifier).store;
-    // day 70 = today,
+    // day daysSpan = today,
     pageController = PageController(initialPage: daysSpan);
   }
 
