@@ -123,7 +123,7 @@ class _EinsatzState extends ConsumerState<Einsatz> {
               child: TextField(
                 controller: controllerMap["begin"]!,
                 focusNode: focusNodeMap["begin"]!,
-                keyboardType: TextInputType.datetime,
+                keyboardType: TextInputType.text, // datetime shows no :
                 decoration: const InputDecoration(
                     labelText: "Beginn", hintText: "hh:mm"),
               ),
@@ -133,7 +133,7 @@ class _EinsatzState extends ConsumerState<Einsatz> {
               child: TextField(
                 controller: controllerMap["end"]!,
                 focusNode: focusNodeMap["end"]!,
-                keyboardType: TextInputType.datetime,
+                keyboardType: TextInputType.text,
                 decoration:
                     const InputDecoration(labelText: "Ende", hintText: "hh:mm"),
               ),

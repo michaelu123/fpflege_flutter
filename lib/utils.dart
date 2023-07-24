@@ -15,12 +15,12 @@ final values = [
 
 // einige Termine, von denen wir annehmen, daß sie sich nicht am nächsten Tag wiederholen:
 final skipES = [
-  "krank",
+  // "krank",
   "feiertag",
   "üst-abbau",
   "fortbildung",
   "supervision",
-  "dienstbesprechung"
+  "dienstbesprechung",
 ];
 
 String standardize(String name, String value) {

@@ -104,11 +104,12 @@ class _EigenschaftenState extends ConsumerState<Eigenschaften> {
                         },
                       ),
                       TextFormField(
-                        initialValue: newEmail,
+                        initialValue: newEmail == ""
+                            ? "fpflege@die-mitterfelder.de"
+                            : newEmail,
                         maxLength: 50,
                         decoration: const InputDecoration(
-                          label: Text(
-                              'Email-Adresse des Empfängers (z.B. fpflege@die-mitterfelder.de)'),
+                          label: Text('Email-Adresse des Empfängers'),
                         ),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
