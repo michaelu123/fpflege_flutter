@@ -23,6 +23,9 @@ Future<Database> _getDatabase() async {
             fahrtzeit TEXT,kh INTEGER)
       """);
       await db.execute("""
+          CREATE UNIQUE INDEX tagfnr on arbeitsblatt(tag,fnr)
+      """);
+      await db.execute("""
           CREATE TABLE eigenschaften(
             vorname TEXT,
             nachname TEXT,
@@ -102,10 +105,7 @@ class DBNotifier extends StateNotifier<FpflegeDay> {
   Future<void> load(DateTime date) async {
     var day = await loadDay(date);
 
-    if (day.fam1.einsatzstelle == "" &&
-        day.fam2.einsatzstelle == "" &&
-        day.fam3.einsatzstelle == "" &&
-        !weekEnd(date)) {
+    if (day.isEmpty && !weekEnd(date)) {
       for (int i = 1; i < 5; i++) {
         final prevDate = date.subtract(Duration(days: i));
         final prevDay = await loadDay(prevDate);

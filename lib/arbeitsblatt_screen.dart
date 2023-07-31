@@ -54,11 +54,11 @@ class _ArbeitsblattState extends ConsumerState<Arbeitsblatt> {
       currDay = 2 * daysSpan - 1;
     }
     //print("xxxx useDate $days $currDay");
-    await pageController.animateToPage(currDay,
-        duration: const Duration(milliseconds: 500), curve: Curves.linear);
     final now = DateTime.now();
     date = now.add(Duration(days: currDay - daysSpan));
     await ref.read(dbProvider.notifier).load(date);
+    await pageController.animateToPage(currDay,
+        duration: const Duration(milliseconds: 500), curve: Curves.linear);
     setState(() {});
     explicitChange = false;
   }

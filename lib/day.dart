@@ -24,12 +24,14 @@ class FpflegeDay {
   final FpflegeEinsatz fam1;
   final FpflegeEinsatz fam2;
   final FpflegeEinsatz fam3;
-  FpflegeDay(this.dayIdx, this.fam1, this.fam2, this.fam3);
+  final bool isEmpty;
+  FpflegeDay(this.dayIdx, this.fam1, this.fam2, this.fam3) : isEmpty = false;
   FpflegeDay.empty(String dayIdxArg)
       : dayIdx = dayIdxArg,
         fam1 = FpflegeEinsatz.empty(),
         fam2 = FpflegeEinsatz.empty(),
-        fam3 = FpflegeEinsatz.empty();
+        fam3 = FpflegeEinsatz.empty(),
+        isEmpty = true;
 
   // can this be improved? Dart has no object destructuring, as it seems.
   // using json as intermediate?

@@ -17,7 +17,6 @@ Future<String?> sendExcel(
   final data = await ref.read(dbProvider.notifier).loadMonthRaw(search);
   final dayIdx = checkComplete(data, year, month);
   if (dayIdx != null) return dayIdx;
-  print("xxxx eigen $eigenschaften");
   final bytes = makeExcel(year, month, data, eigenschaften);
   final xlsx = await writeExcel(bytes, month);
 
@@ -275,7 +274,7 @@ List<int> makeExcel(
   sheet.getRangeByIndex(row, 18).setNumber(sumIst - sumSoll); // 18=R
 
   row += 2;
-  sheet.getRangeByIndex(row, 2).setText("Wochentage");
+  sheet.getRangeByIndex(row, 2).setText("Werktage");
   sheet.getRangeByIndex(row, 3).setNumber(wochenTage.toDouble());
   row += 1;
   sheet.getRangeByIndex(row, 2).setText("Arbeitstage");
