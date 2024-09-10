@@ -18,7 +18,7 @@ Future<String?> sendExcel(
   final dayIdx = checkComplete(data, year, month);
   if (dayIdx != null) return dayIdx;
   final bytes = makeExcel(year, month, data, eigenschaften);
-  final xlsx = await writeExcel(bytes, month);
+  final xlsx = await writeExcel(bytes, month, eigenschaften);
 
   if (Platform.isAndroid) {
     await sendEmail(
@@ -237,7 +237,9 @@ List<int> makeExcel(
 
     final diffZeit = diffHHMM(beginn, ende);
     if (nichtArbeit.contains(einsatzStelle.toLowerCase())) {
-      soll -= diffZeit;
+      if (einsatzStelle.toLowerCase() != "üst-abbau") {
+        soll -= diffZeit;
+      }
     } else {
       ist += diffZeit;
       arbeitsTage.add(dday);
@@ -300,14 +302,19 @@ List<int> makeExcel(
   return bytes;
 }
 
-Future<File> writeExcel(List<int> bytes, int month) async {
+Future<File> writeExcel(
+    List<int> bytes, int month, List<Object> eigenschaften) async {
   final monthName = months[month];
+  final firstName = eigenschaften[0] as String;
+  final lastName = eigenschaften[1] as String;
   if (Platform.isAndroid) {
     final appDir = await syspaths.getApplicationDocumentsDirectory();
-    return await File("${appDir.path}/$monthName.xlsx").writeAsBytes(bytes);
+    return await File("${appDir.path}/$monthName.$firstName.$lastName.xlsx")
+        .writeAsBytes(bytes);
   } else {
     // Platform.isWindows
-    return await File("$monthName.xlsx").writeAsBytes(bytes);
+    return await File("$monthName.$firstName.$lastName.xlsx")
+        .writeAsBytes(bytes);
   }
 }
 
@@ -322,7 +329,7 @@ Future<void> sendEmail(
   final Email email = Email(
     body:
         "Anbei das Arbeitsblatt von $vorname $nachname für den Monat $monthName.",
-    subject: "Arbeitsblatt $monthName",
+    subject: "Arbeitsblatt $monthName.$vorname.$nachname",
     recipients: [emailadresse],
     attachmentPaths: [xlsx.path],
     isHTML: false,

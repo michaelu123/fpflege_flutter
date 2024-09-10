@@ -25,15 +25,11 @@ class _EinsatzState extends ConsumerState<Einsatz> {
       "einsatzstelle": TextEditingController(),
       "begin": TextEditingController(),
       "end": TextEditingController(),
-      // "mvv": TextEditingController(),
-      "fahrzeit": TextEditingController(),
     };
     focusNodeMap = {
       "einsatzstelle": FocusNode(),
       "begin": FocusNode(),
       "end": FocusNode(),
-      // "mvv": FocusNode(),
-      "fahrzeit": FocusNode(),
     };
     for (final name in focusNodeMap.keys) {
       final fn = focusNodeMap[name];
@@ -86,8 +82,8 @@ class _EinsatzState extends ConsumerState<Einsatz> {
     controllerMap["einsatzstelle"]!.text = fam.einsatzstelle;
     controllerMap["begin"]!.text = fam.begin;
     controllerMap["end"]!.text = fam.end;
-    controllerMap["fahrzeit"]!.text = fam.fahrzeit;
     bool kh = fam.kh;
+    bool fahrt = fam.fahrzeit == "0,5";
 
     return Column(
       children: [
@@ -128,6 +124,7 @@ class _EinsatzState extends ConsumerState<Einsatz> {
                     labelText: "Beginn", hintText: "hh:mm"),
               ),
             ),
+            const Spacer(),
             SizedBox(
               width: 60,
               child: TextField(
@@ -138,26 +135,18 @@ class _EinsatzState extends ConsumerState<Einsatz> {
                     const InputDecoration(labelText: "Ende", hintText: "hh:mm"),
               ),
             ),
-            SizedBox(
-              width: 60,
-              child: TextField(
-                enabled: widget.no != 3,
-                controller: controllerMap["fahrzeit"]!,
-                focusNode: focusNodeMap["fahrzeit"]!,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                    labelText: "Fahrtzeit", hintText: "0,5 oder leer"),
-              ),
-            ),
-            // SizedBox(
-            //   width: 60,
-            //   child: TextField(
-            //     controller: controllerMap["mvv"]!,
-            //     focusNode: focusNodeMap["mvv"]!,
-            //     decoration: const InputDecoration(
-            //         labelText: "MVV-Euro", hintText: "Kosten Fahrkarte"),
-            //   ),
-            // ),
+            const Spacer(),
+            if (widget.no != 3) const Text("MVV"),
+            widget.no != 3
+                ? Checkbox(
+                    value: fahrt,
+                    onChanged: (value) {
+                      fahrt = value ?? false;
+                      widget.store(widget.no, "fahrzeit", fahrt ? "0,5" : "");
+                      setState(() {});
+                    },
+                  )
+                : const SizedBox(width: 75),
           ],
         ),
       ],
